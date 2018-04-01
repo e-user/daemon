@@ -1,14 +1,14 @@
 {
   "name": "daemon",
   "version": "0.1.0",
-  "description": "daemon next generation internet emacs",
+  "description": "Editor to conjure and control",
   "scripts": {
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development",
     "watch": "webpack --mode development --watch"
   },
   "author": "Alexander Kahl <ak@sodosopa.io>",
-  "license": "GPLv3+",
+  "license": "Apache-2.0",
   "private": true,
   "dependencies": {
     "bootstrap": "^4.0.0",
