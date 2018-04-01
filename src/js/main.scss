@@ -1,0 +1,12 @@
+@import '~bootstrap/scss/bootstrap';
+@import '~codemirror/lib/codemirror';
+@import './codemirror-cyberpunk';
+
+html, body {
+  height: 100%;
+  font: 100% Inconsolata;
+}
+
+.CodeMirror {
+  height: 100%; 
+}
