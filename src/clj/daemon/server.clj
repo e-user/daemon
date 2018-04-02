@@ -12,16 +12,6 @@
 
 (defonce server (atom nil))
 
-(def non-websocket-request
-  {:status 400
-   :headers {"content-type" "application/text"}
-   :body "Expected a websocket request."})
-
-(defn websocket-handler [req]
-  (-> (http/websocket-connection req)
-    (d/chain (fn [socket] (s/connect socket socket)))
-    (d/catch (fn [_] non-websocket-request))))
-
 (defn log-request [handler]
   (fn [{:keys [request-method uri] :as req}]
     (let [{:keys [status] :as res} (handler req)]

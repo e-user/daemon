@@ -7,7 +7,8 @@
                  [aleph "0.4.4"]
                  [compojure "1.6.0"]
                  [com.taoensso/timbre "4.10.0"]
-                 [com.fzakaria/slf4j-timbre "0.3.8"]]
+                 [com.fzakaria/slf4j-timbre "0.3.8"]
+                 [cheshire "5.8.0"]]
   :source-paths ["src/clj"]
   :test-paths ["test/clj"]
   :main ^:skip-aot daemon.core
