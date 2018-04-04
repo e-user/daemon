@@ -44,18 +44,19 @@ export default {
       return ret
     }
 
-    socket.addEventListener('open', () => {
-      send('hello', { version: '0.1' })
-    })
-
     socket.addEventListener('message', handleMessage)
 
-    return {
-      install (Vue/*, options*/) {
-        Vue.prototype.$daemon = {
-          send
-        }
-      }
-    }
+    return new Promise(resolve => {
+      socket.addEventListener('open', () => {
+        send('hello', { version: '0.1' })
+        resolve({
+          install (Vue/*, options*/) {
+            Vue.prototype.$daemon = {
+              send
+            }
+          }
+        })
+      })
+    })
   }
 }

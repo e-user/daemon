@@ -1,7 +1,8 @@
 (ns daemon.input
   (:require [taoensso.timbre :as timbre]
             [clojure.spec.alpha :as spec]
-            [daemon.socket :as socket]))
+            [daemon.socket :as socket]
+            [daemon.event :as event]))
 
 (timbre/refer-timbre)
 
@@ -13,7 +14,7 @@
 (spec/def ::code pos-int?)
 (spec/def ::name string?)
 
-(defmethod socket/handle-event "input" [{:keys [data]} sink]
+(defmethod event/handle "input" [data {:keys [sink]}]
   (let [data' (spec/conform ::data data)]
     (if (spec/invalid? data')
       (socket/report-error sink (spec/explain-str ::message data))

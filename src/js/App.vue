@@ -1,7 +1,7 @@
 <template>
   <div id="app" class="d-flex flex-column">
-    <editor v-bind:text="message"></editor>
-    <editor read-only="nocursor"></editor>
+    <editor></editor>
+    <editor read-only="nocursor" buffer="Messages"></editor>
   </div>
 </template>
 
@@ -9,11 +9,6 @@
 import Editor from './Editor.vue'
 
 export default {
-  data () {
-    return {
-      message: "Hello World!"
-    }
-  },
   components: {
     Editor
   }

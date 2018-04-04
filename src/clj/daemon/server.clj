@@ -6,7 +6,9 @@
             [ring.util.response :as response]
             [manifold.deferred :as d]
             [manifold.stream :as s]
-            [daemon.socket :as socket]))
+            [daemon.socket :as socket]
+            [daemon.input]
+            [daemon.buffer :as buffer]))
 
 (timbre/refer-timbre)
 

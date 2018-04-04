@@ -5,7 +5,8 @@
             [manifold.deferred :as d]
             [manifold.stream :as s]
             [clojure.spec.alpha :as spec]
-            [cheshire.core :as json])
+            [cheshire.core :as json]
+            [daemon.event :as event])
   (:import [com.fasterxml.jackson.core JsonParseException]))
 
 (timbre/refer-timbre)
@@ -15,18 +16,7 @@
 (spec/def ::data map?)
 (spec/def ::seq-id any?)
 
-(defn report-error [sink s]
-  (error s)
-  (s/put! sink (json/generate-string {:op :report-error :data {:error s}})))
-
-(defmulti handle-event "Handle incoming `event`"
-  (fn [{:keys [op]} sink] op))
-
-(defmethod handle-event :default [{:keys [op]} sink]
-  (report-error sink (format "Received unknown op [%s]" op))
-  {})
-
-(defmethod handle-event "hello" [_ sink]
+(defmethod event/handle "hello" [& _]
   {})
 
 (def non-websocket-request
@@ -40,15 +30,17 @@
     (let [raw (json/parse-string s keyword)
           event (spec/conform ::message raw)]
       (if (spec/invalid? event)
-        (report-error socket (format "Invalid message: %s" (spec/explain-str ::message raw)))
-        (do
+        (error (format "Invalid message: %s" (spec/explain-str ::message raw)))
+        (let [{:keys [op data seq-id]} event]
           (info (format "Message conformed to %s" event))
-          (s/put! socket (json/generate-string {:op :ack :data (assoc (handle-event event (s/sink-only socket)) :seq-id (:seq-id event))})))))
+          (s/put! socket (json/generate-string {:op :ack
+                                                :data (event/handle data {:sink (s/sink-only socket) :op op :seq-id seq-id})
+                                                :seq-id seq-id})))))
     (catch JsonParseException e
-      (report-error socket (format "Couldn't parse message as JSON: %s" (pr-str e))))))
+      (error (format "Couldn't parse message as JSON: %s" (pr-str e))))))
 
 (defn responder
-  "Consume all messages from `socket` and feed them to `handle-event`"
+  "Consume all messages from `socket` and feed them to `handle-message`"
   [socket]
   (s/consume (fn [event] (handle-message socket event)) socket))
 
