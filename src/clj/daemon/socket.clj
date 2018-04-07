@@ -6,7 +6,8 @@
             [manifold.stream :as s]
             [clojure.spec.alpha :as spec]
             [cheshire.core :as json]
-            [daemon.event :as event])
+            [daemon.event :as event]
+            [daemon.log :as log])
   (:import [com.fasterxml.jackson.core JsonParseException]))
 
 (timbre/refer-timbre)
@@ -16,8 +17,18 @@
 (spec/def ::data map?)
 (spec/def ::seq-id any?)
 
-(defmethod event/handle "hello" [& _]
-  {})
+(def broadcast-stream (s/stream* {:permanent? true}))
+(def seq-id (atom 0))
+
+(defn broadcast [op data]
+  (s/put! broadcast-stream
+    (json/generate-string
+      {:op op
+       :data data
+       :seq-id (swap! seq-id inc)})))
+
+;; TODO
+(defmethod event/handle "hello" [& _] {})
 
 (def non-websocket-request
   {:status 400
@@ -40,13 +51,17 @@
       (error (format "Couldn't parse message as JSON: %s" (pr-str e))))))
 
 (defn responder
-  "Consume all messages from `socket` and feed them to `handle-message`"
+  "Consume all messages from `socket` and feed them to `handle-message`
+
+  Also connect `socket` to `broadcast-stream`."
   [socket]
-  (s/consume (fn [event] (handle-message socket event)) socket))
+  (s/consume (fn [event] (handle-message socket event)) socket)
+  (s/connect broadcast-stream socket {:downstream? false})
+  {:status 101})
 
 (defn websocket-handler
   "Handle incoming `request` and initiate a WebSocket connect"
-  [request]
+  [request] ; TODO session to responder
   (-> (http/websocket-connection request)
     (d/chain responder)
     (d/catch (constantly non-websocket-request))))

@@ -7,8 +7,9 @@
             [manifold.deferred :as d]
             [manifold.stream :as s]
             [daemon.socket :as socket]
-            [daemon.input]
-            [daemon.buffer :as buffer]))
+            daemon.input
+            [daemon.buffer :as buffer]
+            [aleph.middleware.session :as session]))
 
 (timbre/refer-timbre)
 
@@ -27,12 +28,12 @@
       (handler req))))
 
 (def routes
-  (log-request
-    (alias-request
-      (compojure/routes
-        (socket/handler)
-        (route/resources "/")
-        (route/not-found "No such page.")))))
+  (let [routes (compojure/routes
+                 (socket/handler)
+                 (GET "/session" [] {:status 200 :body "OK" :session {}})
+                 (route/resources "/")
+                 (route/not-found "No such page."))]
+    (-> routes log-request alias-request (session/wrap-session {:cookie-name "daemon"}))))
 
 (defn start! []
   (when-not @server

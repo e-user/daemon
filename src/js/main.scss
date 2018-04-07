@@ -4,7 +4,8 @@
 
 html, body {
   height: 100%;
-  font: 100% Inconsolata;
+  // TODO should be set through code, refresh
+  font: 9pt Inconsolata;
 }
 
 .CodeMirror {

@@ -1,12 +1,23 @@
 let sequence = 0
 const callbacks = {}
 
+const listeners = {}
+
+function onBuffer (id, f) {
+  listeners[id] = (listeners[id] || []).concat([f])
+}
+
 const handlers = {
   ack (response, id) {
     if (callbacks[id]) {
       callbacks[id].resolve(response)
       delete callbacks[id]
     }    
+  },
+  'edit-buffer' ({ id, op, data }) {
+    if (listeners[id] !== void 0) {
+      listeners[id].forEach(f => f(op, data))
+    }
   }
 }
 
@@ -29,32 +40,35 @@ function handleMessage ({ data:message }) {
 
 export default {
   create ({ url }) {
-    const { host, pathname, protocol } = new URL(url)
-    const ws = protocol === 'https' ? 'wss' : 'ws'
-    const socket = new WebSocket(`${ws}://${host}${pathname}socket`)
+    return fetch('/session', { credentials: 'same-origin' }).then(() => {
+      const { host, pathname, protocol } = new URL(url)
+      const ws = protocol === 'https' ? 'wss' : 'ws'
+      const socket = new WebSocket(`${ws}://${host}${pathname}socket`)
 
-    function send (op, data) {
-      const ret = new Promise((resolve, reject) => {
-        callbacks[sequence] = { resolve, reject }
-      })
-      
-      socket.send(JSON.stringify({ op, data, 'seq-id': sequence }))
-      sequence++
+      function send (op, data) {
+        const ret = new Promise((resolve, reject) => {
+          callbacks[sequence] = { resolve, reject }
+        })
+        
+        socket.send(JSON.stringify({ op, data, 'seq-id': sequence }))
+        sequence++
 
-      return ret
-    }
+        return ret
+      }
 
-    socket.addEventListener('message', handleMessage)
+      socket.addEventListener('message', handleMessage)
 
-    return new Promise(resolve => {
-      socket.addEventListener('open', () => {
-        send('hello', { version: '0.1' })
-        resolve({
-          install (Vue/*, options*/) {
-            Vue.prototype.$daemon = {
-              send
+      return new Promise(resolve => {
+        socket.addEventListener('open', () => {
+          send('hello', { version: '0.1' })
+          resolve({
+            install (Vue/*, options*/) {
+              Vue.prototype.$daemon = {
+                send,
+                onBuffer
+              }
             }
-          }
+          })
         })
       })
     })

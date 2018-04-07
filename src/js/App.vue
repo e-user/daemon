@@ -1,7 +1,7 @@
 <template>
   <div id="app" class="d-flex flex-column">
-    <editor></editor>
-    <editor read-only="nocursor" buffer="Messages"></editor>
+    <editor buffer="*scratch*" active="true"></editor>
+    <editor buffer="*Messages*" tail-mode="true"></editor>
   </div>
 </template>
 
