@@ -4,6 +4,7 @@
 
 <script>
 import CodeMirror from 'codemirror'
+import keycodes from './daemon/keycodes'
 
 export default {
   props: ['buffer', 'active', 'readOnly', 'tailMode'],
@@ -29,7 +30,8 @@ export default {
           "meta?": event.metaKey,
           code: event.keyCode,
           char: event.key,
-          name: event.code
+          name: event.code,
+          id: keycodes[event.keyCode] || "wtf"
         },
         buffer: this.buffer,
         pos: [line, ch]
