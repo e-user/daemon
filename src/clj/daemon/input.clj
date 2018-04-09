@@ -28,5 +28,5 @@
        (log/log! (spec/explain-str ::data data))
        (let [{:keys [key buffer pos]} data'
              {:keys [ctrl? alt? shift? meta? code char name]} key] ; TODO
-         (when (>= code 32)
+         (when (or (= code 32) (<= 48 code 90) (<= 186 code 222))
            (buffer/insert! buffer pos char)))))))
