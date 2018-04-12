@@ -28,7 +28,8 @@
        :seq-id (swap! seq-id inc)})))
 
 ;; TODO
-(defmethod event/handle "hello" [& _] {})
+(defmethod event/handle "hello" [& _]
+  :hello)
 
 (def non-websocket-request
   {:status 400
