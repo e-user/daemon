@@ -21,7 +21,7 @@ export default {
     const doc = this.cm.doc
 
     const onKeyDown = (cm, event) => {
-      const { line, ch } = cm.getCursor()
+      const {line, ch} = cm.getCursor()
       daemon.send('input', {
         key: {
           "ctrl?": event.ctrlKey,
@@ -47,11 +47,11 @@ export default {
     this.cm.on('keypress', onKeyPress)
     this.cm.on('changes', () => {
       if (this.tailMode) {
-        this.cm.extendSelection({ line: doc.lastLine(), ch: 0 })
+        this.cm.extendSelection({line: doc.lastLine(), ch: 0})
       }
     })
 
-    daemon.send('buffer-state', { id: this.buffer }).then(state => {
+    daemon.send('buffer-state', {id: this.buffer}).then(state => {
       this.cm.setValue(state)
       //doc.setCursor(cursor)
       //this.cm.scrollIntoView()
@@ -65,8 +65,8 @@ export default {
       //   this.cm.extendSelection({ line: lastLine + 1, ch: 0 })
       // }
       if (op === 'insert') {
-        const { string, pos } = data
-        doc.replaceRange(string, { line: pos[0], ch: pos[1] })
+        const {string, pos} = data
+        doc.replaceRange(string, {line: pos[0], ch: pos[1]})
       }
     })
 
