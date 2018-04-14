@@ -37,4 +37,4 @@
 (intern 'daemon.log 'log! (fn log! [s] (append! "*Messages*" (str "\n" s))))
 
 (defmethod event/handle "buffer-state" [{:keys [id]} _]
-  (str (get-in @buffers [id :state])))
+  (-> (@buffers id) deref :state str))
