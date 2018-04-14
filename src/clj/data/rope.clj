@@ -382,7 +382,7 @@ characters, 0 lines. strings get analyzed accordingly."
   then the same for everything right of the line."
   [root index]
   (let [[left-rope string right-rope _] (split root (fn [weight _] (> index (:lines weight))))
-        position (- index (:lines (measure left-rope)))
+        position (- index (:lines (weigh left-rope)))
         [left-lines [line & right-lines]] (split-at position (split-lines string))]
     [left-rope left-lines line right-lines right-rope]))
 
@@ -398,29 +398,29 @@ characters, 0 lines. strings get analyzed accordingly."
 (defn translate
   "Translate between rope measurements"
   ([root line column]
-     {:pre [(>= line 0) (>= column 0)]}
-     (if (> line (-> root measure :lines))
-       (throw (IndexOutOfBoundsException. (str "Line index out of range: " line)))
-       (let [[left-rope left-lines line right-lines right-rope] (rope-split-at-line root line)
-             offset (+ (count left-rope) (count (apply concat left-lines)) (count left-lines) column)
-             delta (- column (count line))]
-         (if (and (pos? delta) (empty? right-lines)
-                  (not (and (>= (count right-rope) delta)
-                            (zero? (first (translate right-rope delta))))))
-           (throw (IndexOutOfBoundsException. (str "String index out of range: " column)))
-           offset))))
+   {:pre [(>= line 0) (>= column 0)]}
+   (if (> line (-> root weigh :lines))
+     (throw (IndexOutOfBoundsException. (str "Line index out of range: " line)))
+     (let [[left-rope left-lines line right-lines right-rope] (rope-split-at-line root line)
+           offset (+ (count left-rope) (count (apply concat left-lines)) (count left-lines) column)
+           delta (- column (count line))]
+       (if (and (pos? delta) (empty? right-lines)
+             (not (and (>= (count right-rope) delta)
+                    (zero? (first (translate right-rope delta))))))
+         (throw (IndexOutOfBoundsException. (str "String index out of range: " column)))
+         offset))))
   ([root index]
-     {:pre [(>= index 0)]}
-     (if (> index (count root))
-       (throw (IndexOutOfBoundsException. (str "String index out of range: " index)))
-       (let [[left-rope leaf _ rest] (rope-split-at root index)
-             lines (split-lines (subs leaf 0 rest))
-             rope-weight (-> left-rope measure :lines)
-             weight (dec (count lines))]
-         (if (zero? weight)
-           (let [[_ _ line _ right-rope] (rope-split-at-line left-rope rope-weight)]
-             [rope-weight (+ (count line) (count right-rope) (-> lines first count))])
-           [(+ rope-weight weight) (-> lines last count)])))))
+   {:pre [(>= index 0)]}
+   (if (> index (count root))
+     (throw (IndexOutOfBoundsException. (str "String index out of range: " index)))
+     (let [[left-rope leaf _ rest] (rope-split-at root index)
+           lines (split-lines (subs leaf 0 rest))
+           rope-weight (-> left-rope weigh :lines)
+           weight (dec (count lines))]
+       (if (zero? weight)
+         (let [[_ _ line _ right-rope] (rope-split-at-line left-rope rope-weight)]
+           [rope-weight (+ (count line) (count right-rope) (-> lines first count))])
+         [(+ rope-weight weight) (-> lines last count)])))))
 
 (defn insert
   "Insert string in rope at index or line/column"
