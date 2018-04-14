@@ -7,6 +7,8 @@
 ;; This is used to write to the Messages buffer. Defined in `daemon.buffer`
 (declare log!)
 
+(def println-appender (assoc (timbre/println-appender {:stream :auto})
+                        :ns-blacklist ["io.netty.*"]))
 (def netty-appender (assoc (timbre/spit-appender {:fname "./log/netty.log"})
                       :ns-whitelist ["io.netty.*"]))
 (def daemon-appender (assoc (timbre/spit-appender {:fname "./log/out.log"})
@@ -22,7 +24,8 @@
 
 (def config
   {:level :debug
-   :appenders {:netty netty-appender
+   :appenders {:println println-appender
+               :netty netty-appender
                :spit daemon-appender
                :buffer buffer-appender}})
 
