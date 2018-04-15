@@ -7,7 +7,7 @@
 
 (def buffers (atom {}))
 
-(defn buffer [s] (ref {:history [] :state (rope/rope s)}))
+(defn buffer [s] (agent {:history [] :state (rope/rope s)}))
 
 (defn update! [f & args]
   (swap! buffers #(apply f % args)))
@@ -22,23 +22,28 @@
 
 (defn insert!
   [id [x y] s]
-  (let [b (@buffers id)]
-    (dosync (alter b update :state #(rope/insert % x y s)))
-    (socket/broadcast :edit-buffer {:id id :op :insert :data {:pos [x y] :string s}})))
+  (let [agent (@buffers id)]
+    (send agent
+      (fn [buffer]
+        (socket/broadcast :edit-buffer {:id id :op :insert :data {:pos [x y] :string s}})
+        (update buffer :state #(rope/insert % x y s))))))
 
 (def broken (atom nil))
 (def exception (atom nil))
 
 (defn append!
   [id s]
-  (dosync
-    (let [b (-> (@buffers id) deref :state)]
-      (try
-        (insert! id (rope/translate b (count b)) s)
-        (catch Exception e
-          (println "FUCK")
-          (reset! exception e)
-          (reset! broken b))))))
+  (let [agent (@buffers id)]
+    (send agent
+      (fn [{:keys [state] :as buffer}]
+        (try
+          (let [[x y] (rope/translate state (count state))]
+            (socket/broadcast :edit-buffer {:id id :op :insert :data {:pos [x y] :string s}})
+            (update buffer :state #(rope/insert % x y s)))
+          (catch Exception e
+            (println "FUCK")
+            (reset! exception e)
+            (reset! broken buffer)))))))
 
 (intern 'daemon.log 'log! (fn log! [s] (append! "*Messages*" (str "\n" s))))
 
