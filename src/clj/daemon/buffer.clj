@@ -27,12 +27,18 @@
     (socket/broadcast :edit-buffer {:id id :op :insert :data {:pos [x y] :string s}})))
 
 (def broken (atom nil))
+(def exception (atom nil))
 
 (defn append!
   [id s]
   (dosync
     (let [b (-> (@buffers id) deref :state)]
-      (insert! id (rope/translate b (count b)) s))))
+      (try
+        (insert! id (rope/translate b (count b)) s)
+        (catch Exception e
+          (println "FUCK")
+          (reset! exception e)
+          (reset! broken b))))))
 
 (intern 'daemon.log 'log! (fn log! [s] (append! "*Messages*" (str "\n" s))))
 
