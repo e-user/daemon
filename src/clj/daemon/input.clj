@@ -36,6 +36,7 @@
      (if (spec/invalid? data')
        (log/log! (spec/explain-str ::data data))
        (let [{:keys [key buffer pos]} data'
-             {:keys [ctrl? alt? shift? meta? code char name id]} key] ; TODO
-         (when (printable? code)
-           (buffer/insert! buffer pos char)))))))
+             {:keys [ctrl? alt? shift? meta? code name id char]} key]
+         (buffer/input buffer pos
+           (set (conj (keys (filter second {:ctrl ctrl? :alt alt? :shift shift? :meta meta?}))
+                  (if (printable? code) (first char) id)))))))))

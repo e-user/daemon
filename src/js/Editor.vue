@@ -7,18 +7,18 @@ import CodeMirror from 'codemirror'
 import keycodes from './daemon/keycodes'
 
 export default {
-  props: ['buffer', 'active', 'readOnly', 'tailMode'],
+  props: ['buffer', 'active', 'tailMode'],
   mounted () {
     const daemon = this.$daemon
 
-    this.cm = CodeMirror.fromTextArea(this.$el, {
+    const cm = CodeMirror.fromTextArea(this.$el, {
       theme: 'cyberpunk',
       cursorBlinkRate: 0,
       tabSize: 8,
-      readOnly: this.readOnly
+      scrollbarStyle: null
     })
 
-    const doc = this.cm.doc
+    const {doc} = cm
 
     const onKeyDown = (cm, event) => {
       const {line, ch} = cm.getCursor()
@@ -43,40 +43,60 @@ export default {
       event.preventDefault()
     }
 
-    this.cm.on('keydown', onKeyDown)
-    this.cm.on('keypress', onKeyPress)
-    this.cm.on('changes', () => {
+    let inversionMarker
+    function invertCursor () {
+      if (inversionMarker) {
+        inversionMarker.clear()
+      }
+
+      if (cm.hasFocus()) {
+        const {line, ch} = cm.getCursor()
+        inversionMarker = doc.markText({line, ch}, {line, ch: ch + 1}, {
+          className: 'invert',
+          atomic: true
+        })
+      }
+    }
+
+    cm.on('keydown', onKeyDown)
+    cm.on('keypress', onKeyPress)
+    cm.on('changes', () => {
       if (this.tailMode) {
-        this.cm.extendSelection({line: doc.lastLine(), ch: 0})
+        cm.extendSelection({line: doc.lastLine(), ch: 0})
       }
     })
+    cm.on('cursorActivity', invertCursor)
+    cm.on('focus', invertCursor)
+    cm.on('blur', invertCursor)
 
     daemon.send('buffer-state', {id: this.buffer}).then(state => {
-      this.cm.setValue(state)
+      cm.setValue(state)
       //doc.setCursor(cursor)
       //this.cm.scrollIntoView()
       //this.cm.extendSelection({ line: doc.lastLine() })
     })
 
-    daemon.onBuffer(this.buffer, (op, data) => {
-      // if (op === 'append') {
-      //   const lastLine = doc.lastLine()
-      //   doc.replaceRange(data, { line: lastLine })
-      //   this.cm.extendSelection({ line: lastLine + 1, ch: 0 })
-      // }
-      if (op === 'insert') {
-        const {string, pos} = data
-        doc.replaceRange(string, {line: pos[0], ch: pos[1]})
+    const handlers = {
+      insert ([[line, ch], string]) {
+        doc.replaceRange(string, {line, ch})
+      },
+      'move-cursor' ([line, ch]) {
+        doc.setCursor({line, ch})
+      },
+      delete ([[line1, ch1], [line2, ch2]]) {
+        doc.replaceRange('', {line: line1, ch: ch1}, {line: line2, ch: ch2})
       }
-    })
+    }
 
-    // TODO
-    // "cursorActivity" (instance: CodeMirror)
-    // doc.markText(from: {line, ch}, to: {line, ch}, ?options: object) → TextMarker
+    daemon.onBuffer(this.buffer, ops => {
+      cm.operation(() => ops.forEach(({op, data}) => (handlers[op] || (() => {}))(data)))
+    })
   },
 }
 </script>
 
-<style scoped>
-
+<style>
+.invert {
+  filter: invert(100%);
+}
 </style>

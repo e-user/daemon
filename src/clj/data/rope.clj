@@ -247,7 +247,7 @@ characters, 0 lines. strings get analyzed accordingly."
     [root "" (rope) 0]
     (let [[left-rope string right-rope _] (split root (fn [weight _] (>= index (:length weight))))
           position (- index (count left-rope))]
-      [left-rope string right-rope position])))
+      [left-rope (or string "") right-rope position])))
 
 (defn rope-partition
   "Partition for ropes
@@ -383,7 +383,7 @@ characters, 0 lines. strings get analyzed accordingly."
   [root index]
   (let [[left-rope string right-rope _] (split root (fn [weight _] (> index (:lines weight))))
         position (- index (:lines (weigh left-rope)))
-        [left-lines [line & right-lines]] (split-at position (split-lines string))]
+        [left-lines [line & right-lines]] (split-at position (split-lines (or string "")))]
     [left-rope left-lines line right-lines right-rope]))
 
 (defn split-merge
@@ -462,6 +462,14 @@ characters, 0 lines. strings get analyzed accordingly."
        ""
        (report root (translate root start-line start-column) (translate root end-line end-column)))))
 
+(defn line
+  "Line at `index` as string"
+  [root index]
+  (if (<= (-> root weigh :lines) index)
+    (report root (translate root index 0))
+    (report root (translate root index 0)
+      (dec (translate root (inc index) 0)))))
+
 (defn delete
   "Delete the characters at interval [start..end] in the rope"
   ([root start end]
@@ -508,9 +516,10 @@ characters, 0 lines. strings get analyzed accordingly."
 
   Ropey
   (balanced? [this]
-    (let [level (+ level 2)]
-      (and (< level (count fib-seq))
-        (>= (count this) (nth fib-seq level)))))
+    (or (< level 3)
+      (let [level (+ level 2)]
+        (and (< level (count fib-seq))
+          (>= (count this) (nth fib-seq level))))))
 
   Counted
   (count [this] (:length (weigh this)))
