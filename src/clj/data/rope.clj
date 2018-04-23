@@ -4,7 +4,7 @@ by Boehm, Hans-J; Atkinson, Russ; and Plass, Michael (December 1995), doi:10.100
   (:refer-clojure :exclude [cat])
   (:require [clojure.zip :as zip]
             [clojure.string :as str])
-  (:import [clojure.lang Counted Indexed Delay IDeref ILookup IPersistentCollection]
+  (:import [clojure.lang Counted Indexed IDeref ILookup IPersistentCollection]
            [java.lang String IndexOutOfBoundsException]
            [java.io File RandomAccessFile]))
 
@@ -423,15 +423,18 @@ characters, 0 lines. strings get analyzed accordingly."
          [(+ rope-weight weight) (-> lines last count)])))))
 
 (defn insert
-  "Insert string in rope at index or line/column"
-  ([root index string]
-   (maybe-rebalance
-     (rooted
-       (let [[left-rope target right-rope position] (rope-split-at root index)]
-         (merge-2-3 (conjoin left-rope (subs target 0 position) string (subs target position))
-           right-rope)))))
-  ([root line column string]
-   (insert root (translate root line column) string)))
+  "Insert string in rope at `index`"
+  [root index string]
+  (maybe-rebalance
+    (rooted
+      (let [[left-rope target right-rope position] (rope-split-at root index)]
+        (merge-2-3 (conjoin left-rope (subs target 0 position) string (subs target position))
+          right-rope)))))
+
+(defn insert-2d
+  "Insert string in rope at `[line column]`"
+  [root pos string]
+  (insert root (apply translate root pos) string))
 
 (defn report
   "Report in O(log n) time for ropes, the equivalent of string subs"
@@ -454,13 +457,17 @@ characters, 0 lines. strings get analyzed accordingly."
                     (> length rest)
                     (let [[middle-rope part2 _ position2] (rope-split-at right-rope (- length rest))]
                       (conc (subs part1 position1) (conjoin middle-rope (subs part2 0 position2))))
-                    :default (subs part1 position1 (+ position1 length)))))))
-  ([root start-line start-column end-line end-column]
-     {:pre [(>= (- end-line start-line) 0)]}
-     (if (and (= start-line end-line)
-              (= start-column end-column))
-       ""
-       (report root (translate root start-line start-column) (translate root end-line end-column)))))
+                    :default (subs part1 position1 (+ position1 length))))))))
+
+(defn report-2d
+  "Report based on two-dimensional positions"
+  [root start end]
+  (let [start' (apply translate root start)
+        end' (apply translate root end)]
+    (cond
+      (> start' end') (throw (IndexOutOfBoundsException. "End must not be smaller than start"))
+      (= start' end') ""
+      :default (report root start' end'))))
 
 (defn line
   "Line at `index` as string"
@@ -472,33 +479,37 @@ characters, 0 lines. strings get analyzed accordingly."
 
 (defn delete
   "Delete the characters at interval [start..end] in the rope"
-  ([root start end]
-     {:pre [(>= (- end start) 0)]}
-     (cond
-       (= start end)
-       root
+  [root start end]
+  {:pre [(>= (- end start) 0)]}
+  (cond
+    (= start end)
+    root
 
-       (= end (count root))
-       (if (= start 0)
-         (rope)
-         (let [[left-rope part _ position] (rope-split-at root start)
-               snippet (subs part 0 position)]
-           (rooted (merge-2-3 left-rope snippet))))
+    (= end (count root))
+    (if (= start 0)
+      (rope)
+      (let [[left-rope part _ position] (rope-split-at root start)
+            snippet (subs part 0 position)]
+        (rooted (merge-2-3 left-rope snippet))))
 
-       :default
-       (let [[left-rope part1 _ position1] (rope-split-at root start)
-             [_ part2 right-rope position2] (rope-split-at root end)
-             new-left (conjoin left-rope (subs part1 0 position1) (subs part2 position2))]
-         (rooted (merge-2-3 new-left right-rope)))))
-  ([root start-line start-column end-line end-column]
-     {:pre [(>= (- end-line start-line) 0)]}
-     (if (and (= start-line end-line)
-              (= start-column end-column))
-       root
-       (delete root (translate root start-line start-column) (translate root end-line end-column)))))
+    :default
+    (let [[left-rope part1 _ position1] (rope-split-at root start)
+          [_ part2 right-rope position2] (rope-split-at root end)
+          new-left (conjoin left-rope (subs part1 0 position1) (subs part2 position2))]
+      (rooted (merge-2-3 new-left right-rope)))))
+
+(defn delete-2d
+  "Delete the characters at 2D interval [start..end] in the rope"
+  [root start end]
+  (let [start' (apply translate root start)
+        end' (apply translate root end)]
+    (cond
+      (> start' end') (throw (IndexOutOfBoundsException. "End must not be smaller than start"))
+      (= start' end') root
+      :default  (delete root start' end'))))
 
 (defn delete-line
-  "Delete the line at index in the rope"
+  "Delete the line at `index` in the rope"
   [root index]
   (delete root index 0 (inc index) 0))
 
@@ -564,14 +575,12 @@ characters, 0 lines. strings get analyzed accordingly."
       (rope (left coll) (str right-child string))
       (cat coll (rope string)))))
 
-(deftype Bud [#^Delay seed #^CharSequenceMeasurement weight]
+(deftype Bud [reader #^CharSequenceMeasurement weight]
   Measurable
-  (measure [_] (if (realized? seed)
-                 (measure @seed)
-                 weight))
+  (measure [_] weight)
 
   IDeref
-  (deref [_] (force seed))
+  (deref [_] (reader))
 
   Treeish-2-3
   (split [_ _] nil)
@@ -585,16 +594,16 @@ characters, 0 lines. strings get analyzed accordingly."
   (count [this] (:length (weigh this)))
 
   Indexed
-  (nth [this index] (nth @seed index))
+  (nth [this index] (nth (reader) index))
   (nth [this index not-found]
-    (try (nth @seed index)
+    (try (nth (reader) index)
          (catch Exception _ not-found)))
 
   CharSequence
-  (charAt [this index] (nth @seed index))
+  (charAt [this index] (nth (reader) index))
   (length [this] (count this))
-  (subSequence [this start end] (subs @seed start end))
-  (toString [this] @seed)
+  (subSequence [this start end] (subs (reader) start end))
+  (toString [this] (reader))
 
   ILookup
   (valAt [this key] (.valAt this key nil))
@@ -615,7 +624,7 @@ characters, 0 lines. strings get analyzed accordingly."
                    (let [data (byte-array len)]
                      (doto file (.seek pos) (.read data 0 len))
                      (String. data))))]
-   (Bud. (delay (readfn)) (measure (readfn)))))
+    (Bud. readfn (measure (readfn)))))
 
 (defn- span [start end step]
   (let [coll (->> (iterate (fn [[a b]] [(inc b) (+ (inc b) (- b a))]) [start (dec (+ start step))])
