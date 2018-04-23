@@ -16,7 +16,7 @@
 (def buffer-appender
   {:enabled?   true
    :async?     false
-   :min-level  nil
+   :min-level  :info
    :rate-limit nil
    :ns-blacklist ["io.netty.*"]
    :fn (fn [{:keys [level msg_]}]
@@ -32,4 +32,3 @@
 (defn configure! []
   (timbre/merge-config! config)
   (netty/set-logger! :slf4j))
-
