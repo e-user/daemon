@@ -44,7 +44,7 @@
       (if (spec/invalid? event)
         (error (format "Invalid message: %s" (spec/explain-str ::message raw)))
         (let [{:keys [op data seq-id]} event]
-          (info (format "Message conformed to %s" event))
+          (debug (format "Message conformed to %s" event))
           (s/put! socket (json/generate-string {:op :ack
                                                 :data (event/handle data {:sink (s/sink-only socket) :op op :seq-id seq-id})
                                                 :seq-id seq-id})))))
